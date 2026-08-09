@@ -12,12 +12,11 @@ questions** about it.
 | | |
 |---|---|
 | **candidate_id** | `manviitnd0408@gmail.com` |
-| **Backend base URL** | `https://sales-inbox-task-router-ix9b.onrender.com/` |
-| **Frontend URL** | `https://sales-inbox-task-router-five.vercel.app/` |
+| **Backend base URL** | `https://sales-inbox-task-router-ix9b.onrender.com` |
+| **Frontend URL** | `https://sales-inbox-task-router-five.vercel.app` |
 
-> ⚠️ Before submitting: fill the two `TODO` URLs above with your live deployments and
-> make them **byte-identical** to what you enter in the submission form. `candidate_id`
-> is already correct and is defined once as an env var (`CANDIDATE_ID`) — never hardcoded.
+> These URLs are live and must be **byte-identical** to what you enter in the submission
+> form. `candidate_id` is defined once as an env var (`CANDIDATE_ID`) — never hardcoded.
 
 ---
 
@@ -29,32 +28,45 @@ questions** about it.
   committed.
 - The **Task API** (`/tasks`, `/users`) is the exact §5 spec the grader calls directly,
   backed by **Postgres** so data survives cold restarts.
-- The **chat** (`/api/chat`) answers questions by having Gemini emit a *structured
-  query plan*, executing parameterised SQL/aggregation in our code, then having Gemini
-  *phrase the numbers we computed*. Gemini never produces a number, so the same question
+- The **chat** (`/api/chat`) answers questions by having the LLM emit a *structured
+  query plan*, executing parameterised SQL/aggregation in our code, then having the LLM
+  *phrase the numbers we computed*. The model never produces a number, so the same question
   twice returns identical figures, and zero / "I don't have that" are first-class answers.
+
+The LLM provider is pluggable: **Groq (Llama-3.3-70B) is primary, Gemini is a fallback, and a
+pure-rules classifier is the last resort** so an email is never dropped when the LLM is down.
 
 ## Architecture
 
-```
- Browser (Vercel, React+Vite+TS)
-   │  VITE_API_BASE_URL  (never sees the Gemini key or the DB)
-   ▼
- FastAPI backend  ── ONE base URL (Render) ───────────────────────────────┐
-   ├── /tasks, /users          the raw §5 Task API (graded directly)       │
-   ├── /ingest                 synchronous batch pipeline                  │
-   ├── /api/tasks,/api/stats    app wrappers (adds skip reasons, reasoning)│
-   └── /api/chat               question → plan → SQL → phrasing            │
-        │                                                                  │
-        ├── Gemini (google-generativeai, gemini-2.0-flash)  [key: env]     │
-        └── Postgres (Supabase)  tasks · email_records · task_revisions ───┘
+**System — one backend base URL; the browser never sees the LLM key or the DB.**
 
- Per-email pipeline:
-   normalise (strip HTML + quoted chains)
-     → deterministic signals (money, dates, PSU, auto-reply, newsletter, spam)
-     → Gemini classification (12 worked examples as few-shot, hints as facts)
-     → deterministic overrides (R3_PSU, R_VALUE, R1_DEADLINE_72H, R4_NO_TASK, R_INVOICE_NOT_DEAL)
-     → write (create via shared Task-API code path, or PATCH thread task + revision)
+```mermaid
+flowchart TD
+  B["Browser — Vercel<br/>React + Vite + TS"] -->|VITE_API_BASE_URL| API
+
+  subgraph API["FastAPI backend — Render (one base URL)"]
+    T["/tasks, /users<br/>raw §5 Task API (graded directly)"]
+    I["/ingest<br/>synchronous batch pipeline"]
+    W["/api/tasks, /api/stats<br/>app wrappers: skip reasons, reasoning"]
+    C["/api/chat<br/>question → plan → SQL → phrasing"]
+  end
+
+  API -->|server-side key| LLM["LLM provider<br/>Groq (llama-3.3-70b) → Gemini → rules fallback"]
+  API --> DB[("Postgres — Supabase<br/>tasks · email_records · task_revisions")]
+```
+
+**Per-email pipeline — deterministic first, LLM second, deterministic overrides last.**
+
+```mermaid
+flowchart LR
+  E["Email"] --> N["Normalise<br/>strip HTML + quoted chains"]
+  N --> S["Deterministic signals<br/>money · date · PSU · auto-reply · newsletter · spam"]
+  S --> L["LLM classify<br/>Groq + 12 worked examples, hints as facts"]
+  L --> R["Rule overrides<br/>R3_PSU · R_VALUE · R1_DEADLINE_72H · R4_NO_TASK · R_INVOICE_NOT_DEAL"]
+  R --> Q{"Task exists<br/>for thread?"}
+  Q -->|no| CR["Create task<br/>(shared Task-API code path)"] --> P[("Persist")]
+  Q -->|yes| UP["PATCH thread task<br/>+ revision diff"] --> P
+  S -. "auto-reply / newsletter / spam" .-> SK["Skip — no task<br/>(logged in email_records)"] --> P
 ```
 
 ## Quickstart
@@ -62,7 +74,7 @@ questions** about it.
 **Backend** (from `backend/`):
 
 ```bash
-cp .env.example .env   # then edit .env: DATABASE_URL + GEMINI_API_KEY
+cp .env.example .env   # then edit .env: DATABASE_URL + GROQ_API_KEY (or GEMINI_API_KEY)
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
@@ -118,15 +130,15 @@ the live backend and renders expected-vs-actual for each.
 1. **Postgres (Supabase):** create a free project → copy the **connection pooling** URI →
    set it as `DATABASE_URL` (the code rewrites the driver to `postgresql+psycopg://`).
 2. **Backend (Render):** New → Blueprint on this repo (`render.yaml`, `rootDir: backend`).
-   Set env vars in the dashboard: `DATABASE_URL`, `GEMINI_API_KEY`, `CORS_ORIGINS`
+   Set env vars in the dashboard: `DATABASE_URL`, `GROQ_API_KEY`, `CORS_ORIGINS`
    (your Vercel origin). Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 3. **Frontend (Vercel):** import repo, root directory `frontend`, set
    `VITE_API_BASE_URL` to the Render URL. `vercel.json` handles the SPA build.
 
 ## Security
 
-- The Gemini key is read from `GEMINI_API_KEY` **server-side only**. The browser never
-  sees it and never talks to the DB. Check the Network tab — only `/api/*`, `/ingest`,
+- The LLM key (`GROQ_API_KEY` / `GEMINI_API_KEY`) is read **server-side only**. The browser
+  never sees it and never talks to the DB. Check the Network tab — only `/api/*`, `/ingest`,
   `/tasks` calls, no key.
 - `.env` is git-ignored; only `.env.example` is committed. No secrets in the repo.
 
