@@ -13,11 +13,15 @@ services:
     envVars:
       - key: CANDIDATE_ID
         value: manviitnd0408@gmail.com
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
       - key: GEMINI_MODEL
         value: gemini-2.0-flash
       - key: DATABASE_URL
-        sync: false   # set to your Supabase pooled connection string
+        sync: false   # Supabase Session-pooler connection string (port 5432)
+      - key: GROQ_API_KEY
+        sync: false   # your gsk_... key — never committed
       - key: GEMINI_API_KEY
-        sync: false   # set to your Gemini key — never committed
+        sync: false   # optional fallback; leave blank if using Groq
       - key: CORS_ORIGINS
         sync: false   # set to your Vercel origin, e.g. https://your-app.vercel.app
