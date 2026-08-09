@@ -14,6 +14,7 @@ questions** about it.
 | **candidate_id** | `manviitnd0408@gmail.com` |
 | **Backend base URL** | `https://sales-inbox-task-router-ix9b.onrender.com` |
 | **Frontend URL** | `https://sales-inbox-task-router-five.vercel.app` |
+| **Short demo (video)** | [1-minute walkthrough](https://drive.google.com/file/d/1iJWWx1oRiTqb7USYZ1lYTIMksfb5JNhq/view?usp=sharing) |
 
 > These URLs are live and must be **byte-identical** to what you enter in the submission
 > form. `candidate_id` is defined once as an env var (`CANDIDATE_ID`) — never hardcoded.
