@@ -12,8 +12,8 @@ questions** about it.
 | | |
 |---|---|
 | **candidate_id** | `manviitnd0408@gmail.com` |
-| **Backend base URL** | `TODO — paste your Render URL here after deploy, e.g. https://sales-inbox-router-api.onrender.com` |
-| **Frontend URL** | `TODO — paste your Vercel URL here after deploy, e.g. https://sales-inbox-router.vercel.app` |
+| **Backend base URL** | `https://sales-inbox-task-router-ix9b.onrender.com/` |
+| **Frontend URL** | `https://sales-inbox-task-router-five.vercel.app/` |
 
 > ⚠️ Before submitting: fill the two `TODO` URLs above with your live deployments and
 > make them **byte-identical** to what you enter in the submission form. `candidate_id`
