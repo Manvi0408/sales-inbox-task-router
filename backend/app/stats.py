@@ -9,11 +9,38 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from . import llm
 from .config import normalize_candidate_id, settings
 from .db import get_db
 from .models import EmailRecord, Task, TaskRevision
 
 router = APIRouter(prefix="/api", tags=["app"])
+
+
+@router.get("/llm-check")
+def llm_check():
+    """Diagnostic: which provider is active on this instance, and does a live
+    call succeed? Never returns the key itself — only presence/length."""
+    info = {
+        "provider": llm.provider(),
+        "model": llm.active_model(),
+        "groq_key_present": bool(settings.groq_api_key),
+        "groq_key_len": len(settings.groq_api_key or ""),
+        "gemini_key_present": bool(settings.gemini_api_key),
+    }
+    if not llm.available():
+        info["result"] = "no_provider_configured"
+        return info
+    try:
+        text, tok = llm.generate("You are a test.", "Reply with the single word: ok", json_mode=False)
+        info["result"] = "ok"
+        info["sample"] = (text or "").strip()[:40]
+        info["tokens"] = tok
+    except Exception as e:  # noqa: BLE001
+        info["result"] = "error"
+        info["error_type"] = type(e).__name__
+        info["error"] = str(e)[:300]
+    return info
 
 
 @router.post("/reset")
