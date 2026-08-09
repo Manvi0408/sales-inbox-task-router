@@ -26,6 +26,9 @@ app = FastAPI(title="Sales Inbox Router", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # Allow any Vercel deployment (production + preview URLs) without having to
+    # re-set CORS_ORIGINS each time the domain changes.
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
