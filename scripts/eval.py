@@ -33,12 +33,12 @@ CATEGORIES = ["enterprise_rfp", "smb_enquiry", "marketing", "alliances", "financ
 def _post(path, body):
     req = urllib.request.Request(f"{BASE}{path}", data=json.dumps(body).encode(),
                                  method="POST", headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with urllib.request.urlopen(req, timeout=300) as r:
         return json.loads(r.read().decode())
 
 
 def _get(path):
-    with urllib.request.urlopen(f"{BASE}{path}", timeout=120) as r:
+    with urllib.request.urlopen(f"{BASE}{path}", timeout=300) as r:
         return json.loads(r.read().decode())
 
 

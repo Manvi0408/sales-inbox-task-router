@@ -41,7 +41,7 @@ def _req(method: str, path: str, body: dict | None = None):
     req = urllib.request.Request(url, data=data, method=method,
                                  headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=300) as r:
             return r.status, json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read().decode() or "{}")
